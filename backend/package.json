@@ -1,0 +1,25 @@
+{
+  "name": "ethara-backend",
+  "version": "1.0.0",
+  "description": "Ethara seat allocation backend",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/seed/seedData.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.0",
+    "dotenv": "^16.0.1",
+    "express": "^4.19.2",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.0.1",
+    "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
