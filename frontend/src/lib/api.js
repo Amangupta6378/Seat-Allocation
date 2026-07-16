@@ -1,4 +1,5 @@
 const configuredApiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') || '';
+const fallbackHostedApiBaseUrl = 'https://seat-allocation-ok4d.onrender.com';
 
 function getApiBaseUrl() {
   if (configuredApiBaseUrl) {
@@ -10,6 +11,8 @@ function getApiBaseUrl() {
     if (isLocalHost) {
       return '';
     }
+
+    return fallbackHostedApiBaseUrl;
   }
 
   throw new Error('Missing VITE_API_URL. Set it in the hosted frontend to your Render backend URL and redeploy.');
