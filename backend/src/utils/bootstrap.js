@@ -76,7 +76,7 @@ async function ensureBaseData() {
 
   await User.deleteMany({ role: { $nin: ['admin', 'hr'] } });
 
-  await saveOrCreateUser({ username: 'admin' }, {
+  await saveOrCreateUser({ $or: [{ username: 'admin' }, { email: 'admin@example.com' }] }, {
     username: 'admin',
     name: 'Admin User',
     email: 'admin@example.com',
@@ -84,7 +84,7 @@ async function ensureBaseData() {
     role: 'admin'
   });
 
-  await saveOrCreateUser({ username: 'hr' }, {
+  await saveOrCreateUser({ $or: [{ username: 'hr' }, { email: 'hr@example.com' }] }, {
     username: 'hr',
     name: 'HR User',
     email: 'hr@example.com',
