@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const authMiddleware = require('./middleware/auth');
 
 const app = express();
 
@@ -36,11 +35,11 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/employees', authMiddleware, require('./routes/employeeRoutes'));
-app.use('/api/projects', authMiddleware, require('./routes/projectRoutes'));
-app.use('/api/seats', authMiddleware, require('./routes/seatRoutes'));
-app.use('/api/dashboard', authMiddleware, require('./routes/dashboardRoutes'));
-app.use('/api/ai', authMiddleware, require('./routes/aiRoutes'));
+app.use('/api/employees', require('./routes/employeeRoutes'));
+app.use('/api/projects', require('./routes/projectRoutes'));
+app.use('/api/seats', require('./routes/seatRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
 
 app.use((err, _req, res, _next) => {
   console.error(err.stack);

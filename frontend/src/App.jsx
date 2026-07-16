@@ -1,12 +1,11 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import AuthPage from './AuthPage';
 import { apiRequest } from './lib/api';
 import { DEPARTMENTS, PROJECT_NAMES, ROLES } from './constants';
 
 function App() {
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
+  const [user] = useState({ name: 'Direct Access' });
   const [summary, setSummary] = useState(null);
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -68,10 +67,6 @@ function App() {
 
     loadData();
   }, [user, employeeFilters, seatFilters]);
-
-  if (!user) {
-    return <AuthPage onAuth={(userData) => { localStorage.setItem('user', JSON.stringify(userData)); setUser(userData); }} />;
-  }
 
   const refreshEmployees = async () => {
     const params = new URLSearchParams();
@@ -149,7 +144,6 @@ function App() {
             <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/add-employee">Add Employee</Link>
             <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/seats">Seats</Link>
             <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/ai">AI Assistant</Link>
-            <button className="rounded bg-rose-600 px-3 py-2 text-white" onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); }}>Logout</button>
           </div>
         </div>
       </nav>
