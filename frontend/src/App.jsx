@@ -143,8 +143,14 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f4ee] text-slate-800">
-      <nav className="border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
+    <div
+      className="min-h-screen text-slate-800"
+      style={{
+        background:
+          'radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 34%), radial-gradient(circle at top right, rgba(168, 85, 247, 0.14), transparent 28%), radial-gradient(circle at bottom left, rgba(34, 197, 94, 0.12), transparent 30%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 48%, #f8fafc 100%)'
+      }}
+    >
+      <nav className="border-b border-white/60 bg-white/75 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">Ethara Seat Allocation</h1>
@@ -176,15 +182,28 @@ function App() {
 }
 
 function Dashboard({ summary, projects, employees }) {
+  const statCards = [
+    { title: 'Total Employees', value: summary.totalEmployees, className: 'border-sky-200 bg-sky-50 text-sky-950', valueClassName: 'text-sky-950', labelClassName: 'text-sky-700' },
+    { title: 'Total Seats', value: summary.totalSeats, className: 'border-emerald-200 bg-emerald-50 text-emerald-950', valueClassName: 'text-emerald-950', labelClassName: 'text-emerald-700' },
+    { title: 'Occupied Seats', value: summary.occupiedSeats, className: 'border-violet-200 bg-violet-50 text-violet-950', valueClassName: 'text-violet-950', labelClassName: 'text-violet-700' },
+    { title: 'Available Seats', value: summary.availableSeats, className: 'border-amber-200 bg-amber-50 text-amber-950', valueClassName: 'text-amber-950', labelClassName: 'text-amber-700' },
+    { title: 'Reserved Seats', value: summary.reservedSeats, className: 'border-rose-200 bg-rose-50 text-rose-950', valueClassName: 'text-rose-950', labelClassName: 'text-rose-700' },
+    { title: 'Pending Allocation', value: summary.pendingAllocation, className: 'border-cyan-200 bg-cyan-50 text-cyan-950', valueClassName: 'text-cyan-950', labelClassName: 'text-cyan-700' }
+  ];
+
   return (
     <div className="space-y-6">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <StatCard title="Total Employees" value={summary.totalEmployees} />
-        <StatCard title="Total Seats" value={summary.totalSeats} />
-        <StatCard title="Occupied Seats" value={summary.occupiedSeats} />
-        <StatCard title="Available Seats" value={summary.availableSeats} />
-        <StatCard title="Reserved Seats" value={summary.reservedSeats} />
-        <StatCard title="Pending Allocation" value={summary.pendingAllocation} />
+        {statCards.map((card) => (
+          <StatCard
+            key={card.title}
+            title={card.title}
+            value={card.value}
+            className={card.className}
+            valueClassName={card.valueClassName}
+            labelClassName={card.labelClassName}
+          />
+        ))}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
@@ -250,11 +269,11 @@ function Dashboard({ summary, projects, employees }) {
   );
 }
 
-function StatCard({ title, value }) {
+function StatCard({ title, value, className = '', valueClassName = '', labelClassName = '' }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-sm text-slate-500">{title}</p>
-      <p className="mt-2 text-3xl font-semibold text-slate-900">{value}</p>
+    <div className={`rounded-3xl border p-5 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 ${className}`}>
+      <p className={`text-sm font-medium ${labelClassName}`}>{title}</p>
+      <p className={`mt-2 text-3xl font-semibold ${valueClassName}`}>{value}</p>
     </div>
   );
 }
