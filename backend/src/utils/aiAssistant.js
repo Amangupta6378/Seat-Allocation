@@ -1,10 +1,13 @@
 function generateAssistantResponse(query, employeeContext, employees = [], seats = []) {
   const lowered = (query || '').toLowerCase();
 
+  const findEmployeeByName = (name) => employees.find((item) => item.name.toLowerCase() === name.toLowerCase());
+  const findSeatForEmployee = (employee) => seats.find((item) => item.allocatedEmployeeId?.toString() === employee?._id?.toString()) || seats.find((item) => item.allocatedEmployee && item.allocatedEmployee.toLowerCase() === (employee?.name || '').toLowerCase());
+
   if (lowered.includes('where is') && lowered.includes('seated')) {
     const targetName = (query.match(/where is (?:employee )?(.+?) seated/i)?.[1] || '').trim();
-    const targetEmployee = employees.find((item) => item.name.toLowerCase() === targetName.toLowerCase()) || employeeContext || null;
-    const seat = seats.find((item) => item.allocatedEmployee && item.allocatedEmployee.toLowerCase() === (targetEmployee?.name || '').toLowerCase());
+    const targetEmployee = findEmployeeByName(targetName) || employeeContext || null;
+    const seat = findSeatForEmployee(targetEmployee);
 
     if (targetEmployee && seat) {
       return {
@@ -22,6 +25,17 @@ function generateAssistantResponse(query, employeeContext, employees = [], seats
   }
 
   if (lowered.includes('project')) {
+    const projectMatch = query.match(/project\s+([a-z0-9_-]+)/i);
+    const projectName = projectMatch?.[1];
+    if (projectName) {
+      const seatsForProject = seats.filter((seat) => seat.allocatedProject?.toLowerCase() === projectName.toLowerCase() && seat.status === 'Occupied');
+      const employeesForProject = employees.filter((employee) => employee.project.toLowerCase() === projectName.toLowerCase());
+      return {
+        intent: 'project',
+        answer: `Project ${projectName} has ${seatsForProject.length} occupied seats and ${employeesForProject.length} employees mapped to it.`
+      };
+    }
+
     const targetEmployee = employeeContext || employees[0] || null;
     return {
       intent: 'project',
@@ -44,6 +58,16 @@ function generateAssistantResponse(query, employeeContext, employees = [], seats
     return {
       intent: 'team-location',
       answer: teamEmployees.length > 0 ? `${teamEmployees.length} teammates are linked to ${employeeContext?.project || 'the current project'}.` : 'No team members found.'
+    };
+  }
+
+  if (lowered.includes('allocate') && lowered.includes('new employee')) {
+    const available = seats.find((seat) => seat.status === 'Available');
+    return {
+      intent: 'allocate-seat',
+      answer: available
+        ? `The next available seat is on Floor ${available.floor}, Zone ${available.zone}, Bay ${available.bay}, Seat ${available.zone}${available.bay}-${available.seatNumber}.`
+        : 'No available seats are currently open for allocation.'
     };
   }
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const Employee = require('../models/Employee');
 const Seat = require('../models/Seat');
 const { findBestSeat } = require('../utils/allocation');
+const { PROJECT_NAMES } = require('../utils/constants');
 
 router.get('/', async (req, res) => {
   const { search, project, status, department } = req.query;
@@ -34,7 +35,30 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const data = req.body;
-    const employee = await Employee.create(data);
+    const employeeCount = await Employee.countDocuments();
+    const projectName = data.project || data.projectName;
+
+    if (!data.name || !data.email || !data.department || !data.role || !data.joiningDate || !projectName) {
+      return res.status(400).json({ error: 'Missing required employee fields' });
+    }
+
+    if (PROJECT_NAMES.length && !PROJECT_NAMES.includes(projectName)) {
+      return res.status(400).json({ error: 'Project is not in the supported project list' });
+    }
+
+    const employee = await Employee.create({
+      employeeCode: data.employeeCode || `EMP${String(employeeCount + 1).padStart(4, '0')}`,
+      name: data.name,
+      email: data.email,
+      department: data.department,
+      role: data.role,
+      joiningDate: data.joiningDate,
+      status: data.status || 'Active',
+      employmentStatus: data.employmentStatus || 'Active',
+      projectId: data.projectId || null,
+      project: projectName,
+      seatAllocationStatus: data.seatAllocationStatus || 'Pending'
+    });
     res.status(201).json(employee);
   } catch (error) {
     if (error.code === 11000) {
@@ -66,7 +90,7 @@ router.post('/:id/allocate', async (req, res) => {
       : null;
     const seat = findBestSeat(availableSeats, preferredZone, employee.role);
 
-    if (!seat) return res.status(404).json({ error: 'No available seats' });
+    if (!seat) return res.status(404).json({ error: 'No available seats. Please add more seats or release occupied seats.' });
 
     const updatedSeat = await Seat.findByIdAndUpdate(seat._id, {
       status: 'Occupied',

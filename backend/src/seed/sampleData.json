@@ -13,6 +13,7 @@
     "Mered"
   ],
   "users": [
-    { "name": "Admin User", "email": "admin@example.com", "password": "admin123", "role": "admin" }
+    { "username": "admin", "name": "Admin User", "email": "admin@example.com", "password": "admin123", "role": "admin" },
+    { "username": "hr", "name": "HR User", "email": "hr@example.com", "password": "hr1234", "role": "hr" }
   ]
 }

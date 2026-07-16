@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AuthPage from './AuthPage';
 import { apiRequest } from './lib/api';
+import { DEPARTMENTS, PROJECT_NAMES, ROLES } from './constants';
 
 function App() {
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
@@ -10,6 +11,19 @@ function App() {
   const [projects, setProjects] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [seats, setSeats] = useState([]);
+  const [createEmployeeForm, setCreateEmployeeForm] = useState({
+    employeeCode: '',
+    name: '',
+    email: '',
+    department: '',
+    role: '',
+    joiningDate: '',
+    employmentStatus: 'Active',
+    project: '',
+    seatAllocationStatus: 'Pending'
+  });
+  const [createEmployeeError, setCreateEmployeeError] = useState('');
+  const [createEmployeeSuccess, setCreateEmployeeSuccess] = useState('');
   const [employeeFilters, setEmployeeFilters] = useState({ search: '', project: '', status: '', department: '' });
   const [seatFilters, setSeatFilters] = useState({ floor: '', zone: '', status: '' });
 
@@ -79,6 +93,48 @@ function App() {
     }
   };
 
+  const handleCreateEmployee = async (event) => {
+    event.preventDefault();
+    setCreateEmployeeError('');
+    setCreateEmployeeSuccess('');
+
+    try {
+      const payload = {
+        ...createEmployeeForm,
+        project: createEmployeeForm.project || PROJECT_NAMES[0]
+      };
+      const created = await api('/employees', { method: 'POST', body: JSON.stringify(payload) });
+      setCreateEmployeeSuccess(`Employee ${created.name} added successfully.`);
+      setCreateEmployeeForm({
+        employeeCode: '',
+        name: '',
+        email: '',
+        department: '',
+        role: '',
+        joiningDate: '',
+        employmentStatus: 'Active',
+        project: '',
+        seatAllocationStatus: 'Pending'
+      });
+      await refreshEmployees();
+    } catch (error) {
+      setCreateEmployeeError(error.message || 'Could not create employee');
+    }
+  };
+
+  const summaryDefaults = {
+    totalEmployees: 0,
+    totalSeats: 5000,
+    occupiedSeats: 0,
+    availableSeats: 5000,
+    reservedSeats: 0,
+    maintenanceSeats: 0,
+    pendingAllocation: 0,
+    projectWiseAllocation: [],
+    floorWiseOccupancy: []
+  };
+  const dashboardSummary = summary ? { ...summaryDefaults, ...summary } : summaryDefaults;
+
   return (
     <div className="min-h-screen bg-[#f6f4ee] text-slate-800">
       <nav className="border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur">
@@ -90,6 +146,7 @@ function App() {
           <div className="flex items-center gap-2 text-sm">
             <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/">Dashboard</Link>
             <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/employees">Employees</Link>
+            <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/add-employee">Add Employee</Link>
             <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/seats">Seats</Link>
             <Link className="rounded border border-slate-200 bg-white px-3 py-2 text-slate-700 hover:bg-slate-50" to="/ai">AI Assistant</Link>
             <button className="rounded bg-rose-600 px-3 py-2 text-white" onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); }}>Logout</button>
@@ -99,8 +156,9 @@ function App() {
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         <Routes>
-          <Route path="/" element={<Dashboard summary={summary} projects={projects} employees={employees} />} />
+          <Route path="/" element={<Dashboard summary={dashboardSummary} projects={projects} employees={employees} />} />
           <Route path="/employees" element={<EmployeePage employees={employees} filters={employeeFilters} onFilterChange={setEmployeeFilters} onAllocate={handleAllocateSeat} />} />
+          <Route path="/add-employee" element={<AddEmployeePage form={createEmployeeForm} onChange={setCreateEmployeeForm} onSubmit={handleCreateEmployee} error={createEmployeeError} success={createEmployeeSuccess} />} />
           <Route path="/seats" element={<SeatPage seats={seats} filters={seatFilters} onFilterChange={setSeatFilters} />} />
           <Route path="/ai" element={<AiAssistant />} />
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -113,39 +171,71 @@ function App() {
 function Dashboard({ summary, projects, employees }) {
   return (
     <div className="space-y-6">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {summary && (
-          <>
-            <StatCard title="Total Employees" value={summary.totalEmployees} />
-            <StatCard title="Total Seats" value={summary.totalSeats} />
-            <StatCard title="Occupied" value={summary.occupiedSeats} />
-            <StatCard title="Available" value={summary.availableSeats} />
-          </>
-        )}
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <StatCard title="Total Employees" value={summary.totalEmployees} />
+        <StatCard title="Total Seats" value={summary.totalSeats} />
+        <StatCard title="Occupied Seats" value={summary.occupiedSeats} />
+        <StatCard title="Available Seats" value={summary.availableSeats} />
+        <StatCard title="Reserved Seats" value={summary.reservedSeats} />
+        <StatCard title="Pending Allocation" value={summary.pendingAllocation} />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Project Utilization</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Project-wise Seat Allocation</h2>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={projects.map((project, index) => ({ name: project.name, employees: employees.filter((employee) => employee.project === project.name).length, fill: ['#2563eb', '#0f766e', '#7c3aed', '#dc2626', '#ea580c', '#16a34a', '#0891b2', '#9333ea', '#e11d48', '#4f46e5'][index % 10] }))}>
+              <BarChart data={(summary.projectWiseAllocation?.length ? summary.projectWiseAllocation : projects.map((project) => ({ project: project.name, allocatedSeats: employees.filter((employee) => employee.project === project.name && employee.seatAllocationStatus === 'Allocated').length }))).map((item, index) => ({
+                name: item.project || item.name,
+                seats: item.allocatedSeats ?? item.employees ?? 0,
+                fill: ['#2563eb', '#0f766e', '#7c3aed', '#dc2626', '#ea580c', '#16a34a', '#0891b2', '#9333ea', '#e11d48', '#4f46e5', '#14b8a6'][index % 11]
+              }))}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="name" stroke="#64748b" tick={{ fontSize: 12 }} />
                 <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Bar dataKey="employees" fill={(entry) => entry.fill} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="seats" fill={(entry) => entry.fill} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Seat Overview</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Floor-wise Occupancy</h2>
           <ul className="space-y-3 text-sm text-slate-600">
-            <li className="flex justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3"><span>Reserved Seats</span><span className="font-semibold text-slate-900">{summary?.reservedSeats ?? 0}</span></li>
-            <li className="flex justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3"><span>Pending Allocation</span><span className="font-semibold text-slate-900">{summary?.pendingAllocation ?? 0}</span></li>
-            <li className="flex justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3"><span>Active Projects</span><span className="font-semibold text-slate-900">{projects.length}</span></li>
+            {summary.floorWiseOccupancy?.length ? summary.floorWiseOccupancy.map((floor) => (
+              <li key={floor.floor} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex justify-between gap-3">
+                  <span>Floor {floor.floor}</span>
+                  <span className="font-semibold text-slate-900">{floor.occupied}/{floor.total} occupied</span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Available {floor.available} • Reserved {floor.reserved} • Maintenance {floor.maintenance}
+                </p>
+              </li>
+            )) : (
+              <li className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-slate-500">Floor occupancy will appear after seats are loaded.</li>
+            )}
+          </ul>
+        </div>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">New Joiners Pending Allocation</h2>
+          <p className="text-3xl font-semibold text-slate-900">{summary.pendingAllocation}</p>
+          <p className="mt-2 text-sm text-slate-600">Employees who still need a seat assignment.</p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Project Allocation Snapshot</h2>
+          <ul className="space-y-3 text-sm text-slate-600">
+            {(summary.projectWiseAllocation?.length ? summary.projectWiseAllocation : projects.map((project) => ({ project: project.name, allocatedSeats: employees.filter((employee) => employee.project === project.name && employee.seatAllocationStatus === 'Allocated').length }))).slice(0, 6).map((item) => (
+              <li key={item.project} className="flex justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <span>{item.project}</span>
+                <span className="font-semibold text-slate-900">{item.allocatedSeats ?? item.employees ?? 0} seats</span>
+              </li>
+            ))}
           </ul>
         </div>
       </section>
@@ -202,6 +292,51 @@ function EmployeePage({ employees, filters, onFilterChange, onAllocate }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function AddEmployeePage({ form, onChange, onSubmit, error, success }) {
+  const updateField = (field, value) => onChange((prev) => ({ ...prev, [field]: value }));
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="mb-4 text-xl font-semibold text-slate-900">Add New Employee</h2>
+      <p className="mb-4 text-sm text-slate-600">Use this form for HR/admin onboarding. Seat allocation stays separate and follows project proximity.</p>
+
+      {error && <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {success && <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
+
+      <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
+        <input value={form.employeeCode} onChange={(event) => updateField('employeeCode', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Employee ID" required />
+        <input value={form.name} onChange={(event) => updateField('name', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Employee name" required />
+        <input value={form.email} onChange={(event) => updateField('email', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" placeholder="Email" required />
+        <select value={form.department} onChange={(event) => updateField('department', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" required>
+          <option value="">Department</option>
+          {DEPARTMENTS.map((department) => <option key={department} value={department}>{department}</option>)}
+        </select>
+        <select value={form.role} onChange={(event) => updateField('role', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" required>
+          <option value="">Role</option>
+          {ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
+        </select>
+        <input type="date" value={form.joiningDate} onChange={(event) => updateField('joiningDate', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" required />
+        <select value={form.employmentStatus} onChange={(event) => updateField('employmentStatus', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        <select value={form.project} onChange={(event) => updateField('project', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm" required>
+          <option value="">Project assignment</option>
+          {PROJECT_NAMES.map((project) => <option key={project} value={project}>{project}</option>)}
+        </select>
+        <select value={form.seatAllocationStatus} onChange={(event) => updateField('seatAllocationStatus', event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+          <option value="Pending">Pending Allocation</option>
+          <option value="Allocated">Allocated</option>
+          <option value="Not Required">Not Required</option>
+        </select>
+        <div className="md:col-span-2">
+          <button type="submit" className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Save employee</button>
+        </div>
+      </form>
     </div>
   );
 }

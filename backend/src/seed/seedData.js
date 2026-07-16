@@ -3,6 +3,7 @@ const Project = require('../models/Project');
 const Employee = require('../models/Employee');
 const Seat = require('../models/Seat');
 const User = require('../models/User');
+const { PROJECT_NAMES, SEAT_LAYOUT } = require('../utils/constants');
 
 async function seed() {
   console.log('Connecting to database...');
@@ -16,14 +17,10 @@ async function seed() {
     User.deleteMany({})
   ]);
 
-  const projectNames = [
-    'Talos', 'Astra', 'Nova', 'Helix', 'Orbit', 'Vertex', 'Solace', 'Pulse', 'Atlas', 'Flux'
-  ];
-
-  const projects = await Project.insertMany(projectNames.map((name) => ({ name, status: 'Active' })));
+  const projects = await Project.insertMany(PROJECT_NAMES.map((name) => ({ name, status: 'Active' })));
 
   // Weighted project distribution to create varied project sizes
-  const projectWeights = [0.18, 0.12, 0.09, 0.08, 0.11, 0.06, 0.10, 0.07, 0.10, 0.09];
+  const projectWeights = [0.16, 0.10, 0.10, 0.08, 0.10, 0.08, 0.08, 0.08, 0.08, 0.08, 0.06];
   function pickProject() {
     const r = Math.random();
     let acc = 0;
@@ -60,17 +57,15 @@ async function seed() {
   console.log('Inserting employees...');
   await Employee.insertMany(employeeEntries);
 
-  const floors = [1, 2, 3, 4, 5, 6];
-  const zones = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
   const seats = [];
-  const seatStatusPattern = ['Available', 'Available', 'Available', 'Available', 'Available', 'Reserved', 'Reserved', 'Occupied'];
+  const seatStatusPattern = ['Available', 'Available', 'Available', 'Available', 'Available', 'Reserved', 'Occupied', 'Available'];
 
-  for (const floor of floors) {
-    for (const zone of zones) {
-      for (let bay = 1; bay <= 10; bay += 1) {
-        for (let seatIndex = 1; seatIndex <= 11; seatIndex += 1) {
-          const seatNumber = (bay - 1) * 11 + seatIndex;
-          const status = seatStatusPattern[(floor + zone.length + bay + seatIndex) % seatStatusPattern.length];
+  for (const floor of SEAT_LAYOUT.floors) {
+    for (const zone of SEAT_LAYOUT.zones) {
+      for (let bay = 1; bay <= SEAT_LAYOUT.baysPerZone; bay += 1) {
+        for (let seatIndex = 1; seatIndex <= SEAT_LAYOUT.seatsPerBay; seatIndex += 1) {
+          const seatNumber = (bay - 1) * SEAT_LAYOUT.seatsPerBay + seatIndex;
+          const status = seatStatusPattern[(floor + zone.charCodeAt(0) + bay + seatIndex) % seatStatusPattern.length];
           seats.push({ floor, zone, bay, seatNumber, status });
         }
       }
@@ -80,7 +75,6 @@ async function seed() {
   console.log('Inserting seats...');
   await Seat.insertMany(seats);
 
-  // Leave all seats available so employees can be assigned manually from the UI.
   const createdEmployees = await Employee.find().sort({ createdAt: 1 }).exec();
   await Employee.updateMany({}, { $set: { seatAllocationStatus: 'Pending' } });
   await Seat.updateMany({}, { $set: { status: 'Available', allocatedEmployee: null, allocatedEmployeeId: null, allocatedProject: null, allocationDate: null } });
@@ -90,14 +84,28 @@ async function seed() {
   }
 
   // Create or update admin user
-  const existingAdmin = await User.findOne({ email: 'admin@example.com' });
-  if (existingAdmin) {
-    existingAdmin.name = 'Admin User';
-    existingAdmin.role = 'admin';
-    existingAdmin.password = 'admin123';
-    await existingAdmin.save();
+  await User.deleteMany({ role: { $nin: ['admin', 'hr'] } });
+
+  const admin = await User.findOne({ username: 'admin' });
+  if (admin) {
+    admin.name = 'Admin User';
+    admin.role = 'admin';
+    admin.password = 'admin123';
+    admin.email = 'admin@example.com';
+    await admin.save();
   } else {
-    await User.create({ name: 'Admin User', email: 'admin@example.com', password: 'admin123', role: 'admin' });
+    await User.create({ username: 'admin', name: 'Admin User', email: 'admin@example.com', password: 'admin123', role: 'admin' });
+  }
+
+  const hr = await User.findOne({ username: 'hr' });
+  if (hr) {
+    hr.name = 'HR User';
+    hr.role = 'hr';
+    hr.password = 'hr1234';
+    hr.email = 'hr@example.com';
+    await hr.save();
+  } else {
+    await User.create({ username: 'hr', name: 'HR User', email: 'hr@example.com', password: 'hr1234', role: 'hr' });
   }
 
   console.log(`Seeded ${employeeEntries.length} employees and ${seats.length} seats`);

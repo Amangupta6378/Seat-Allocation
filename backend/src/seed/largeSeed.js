@@ -43,7 +43,8 @@ async function seedLargeData() {
   }
   await Employee.insertMany(employeesToCreate);
 
-  await User.create({ name: 'Admin User', email: 'admin@example.com', password: 'admin123', role: 'admin' });
+  await User.create({ username: 'admin', name: 'Admin User', email: 'admin@example.com', password: 'admin123', role: 'admin' });
+  await User.create({ username: 'hr', name: 'HR User', email: 'hr@example.com', password: 'hr1234', role: 'hr' });
 
   const availableSeats = createdSeats.slice(0, 500);
   const reservedSeats = createdSeats.slice(500, 600);
