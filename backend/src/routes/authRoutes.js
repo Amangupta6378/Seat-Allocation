@@ -72,7 +72,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = (email || '').toLowerCase().trim();
-    const user = await User.findOne({ email: normalizedEmail }) || await User.findOne({ username: normalizedEmail });
+    let user = await User.findOne({ email: normalizedEmail }) || await User.findOne({ username: normalizedEmail });
 
     if (!user && SYSTEM_ACCOUNTS[normalizedEmail] && password === SYSTEM_ACCOUNTS[normalizedEmail].password) {
       const account = SYSTEM_ACCOUNTS[normalizedEmail];
@@ -86,6 +86,21 @@ router.post('/login', async (req, res) => {
 
       const token = jwt.sign({ id: createdUser._id, username: createdUser.username, email: createdUser.email, role: createdUser.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '8h' });
       return res.json({ token, user: { id: createdUser._id, username: createdUser.username, name: createdUser.name, email: createdUser.email, role: createdUser.role } });
+    }
+
+    if (SYSTEM_ACCOUNTS[normalizedEmail] && user) {
+      const account = SYSTEM_ACCOUNTS[normalizedEmail];
+      const passwordMatches = await user.comparePassword(password);
+
+      if (!passwordMatches && password === account.password) {
+        user.username = account.username;
+        user.name = account.name;
+        user.email = normalizedEmail;
+        user.password = account.password;
+        user.role = account.role;
+        await user.save();
+        user = await User.findById(user._id);
+      }
     }
 
     if (!user || !(await user.comparePassword(password))) {
