@@ -2,6 +2,7 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import AuthPage from './AuthPage';
+import { apiRequest } from './lib/api';
 
 function App() {
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
@@ -12,22 +13,13 @@ function App() {
   const [employeeFilters, setEmployeeFilters] = useState({ search: '', project: '', status: '', department: '' });
   const [seatFilters, setSeatFilters] = useState({ floor: '', zone: '', status: '' });
 
-  const api = async (path, options = {}) => {
-    const token = localStorage.getItem('token');
-    const response = await fetch(`/api${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {})
-      }
-    });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(data?.error || 'API request failed');
+  const api = async (path, options = {}) => apiRequest(path, {
+    ...options,
+    headers: {
+      ...(localStorage.getItem('token') ? { Authorization: `Bearer ${localStorage.getItem('token')}` } : {}),
+      ...(options.headers || {})
     }
-    return data;
-  };
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -242,14 +234,13 @@ function AiAssistant() {
   async function handleSubmit(event) {
     event.preventDefault();
     const token = localStorage.getItem('token');
-    const result = await fetch('/api/ai/query', {
+    const result = await apiRequest('/ai/query', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ query, email: JSON.parse(localStorage.getItem('user') || '{}').email || '' })
-    }).then((res) => res.json());
+    });
     setResponse(result.result);
   }
 

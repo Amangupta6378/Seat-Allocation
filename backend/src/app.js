@@ -6,8 +6,28 @@ const authMiddleware = require('./middleware/auth');
 
 const app = express();
 
+const localOrigins = ['http://localhost:3000', 'http://localhost:4173', 'http://localhost:5173'];
+const configuredOrigins = (process.env.ALLOWED_ORIGINS || process.env.CLIENT_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (configuredOrigins.length === 0 || configuredOrigins.includes(origin) || localOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(null, false);
+  }
+};
+
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(morgan('dev'));
 app.use(express.json());
 
