@@ -4,21 +4,6 @@ const Seat = require('../models/Seat');
 const User = require('../models/User');
 const { PROJECT_NAMES, SEAT_LAYOUT } = require('./constants');
 
-async function saveOrCreateUser(filter, data) {
-  const existing = await User.findOne(filter);
-  if (existing) {
-    existing.username = data.username;
-    existing.name = data.name;
-    existing.email = data.email;
-    existing.password = data.password;
-    existing.role = data.role;
-    await existing.save();
-    return existing;
-  }
-
-  return User.create(data);
-}
-
 async function ensureBaseData() {
   await Promise.all(PROJECT_NAMES.map(async (name) => {
     const existing = await Project.findOne({ name });
@@ -75,22 +60,6 @@ async function ensureBaseData() {
   }
 
   await User.deleteMany({ role: { $nin: ['admin', 'hr'] } });
-
-  await saveOrCreateUser({ $or: [{ username: 'admin' }, { email: 'admin@example.com' }] }, {
-    username: 'admin',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    password: 'admin123',
-    role: 'admin'
-  });
-
-  await saveOrCreateUser({ $or: [{ username: 'hr' }, { email: 'hr@example.com' }] }, {
-    username: 'hr',
-    name: 'HR User',
-    email: 'hr@example.com',
-    password: 'hr1234',
-    role: 'hr'
-  });
 }
 
 module.exports = { ensureBaseData };

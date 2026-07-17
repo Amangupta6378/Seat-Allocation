@@ -6,22 +6,21 @@ const User = require('../models/User');
 const Employee = require('../models/Employee');
 const Project = require('../models/Project');
 
-const SYSTEM_ACCOUNTS = {
-  'admin@example.com': { username: 'admin', name: 'Admin User', password: 'admin123', role: 'admin' },
-  'hr@example.com': { username: 'hr', name: 'HR User', password: 'hr1234', role: 'hr' }
-};
-
 router.post('/signup', async (req, res) => {
   try {
     const { username, name, email, password, department, role, joiningDate, project, projectId } = req.body;
     const resolvedUsername = (username || email || name || '').toLowerCase().trim().replace(/\s+/g, '.');
+    const normalizedRole = String(role || '').toLowerCase();
 
-    if (!resolvedUsername || !name || !email || !password || !department || !role || !joiningDate || !project) {
+    if (!resolvedUsername || !name || !email || !password || !normalizedRole) {
       return res.status(400).json({ error: 'All signup fields are required' });
     }
 
-    const normalizedRole = String(role).toLowerCase();
     if (!['admin', 'hr'].includes(normalizedRole)) {
+      if (!department || !joiningDate || !project) {
+        return res.status(400).json({ error: 'Employee signup fields are required' });
+      }
+
       const existingEmployee = await Employee.findOne({ $or: [{ email }, { employeeCode: req.body.employeeCode }] });
       if (existingEmployee) {
         return res.status(409).json({ error: 'Employee already exists' });
@@ -72,36 +71,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = (email || '').toLowerCase().trim();
-    let user = await User.findOne({ email: normalizedEmail }) || await User.findOne({ username: normalizedEmail });
-
-    if (!user && SYSTEM_ACCOUNTS[normalizedEmail] && password === SYSTEM_ACCOUNTS[normalizedEmail].password) {
-      const account = SYSTEM_ACCOUNTS[normalizedEmail];
-      const createdUser = await User.create({
-        username: account.username,
-        name: account.name,
-        email: normalizedEmail,
-        password,
-        role: account.role
-      });
-
-      const token = jwt.sign({ id: createdUser._id, username: createdUser.username, email: createdUser.email, role: createdUser.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '8h' });
-      return res.json({ token, user: { id: createdUser._id, username: createdUser.username, name: createdUser.name, email: createdUser.email, role: createdUser.role } });
-    }
-
-    if (SYSTEM_ACCOUNTS[normalizedEmail] && user) {
-      const account = SYSTEM_ACCOUNTS[normalizedEmail];
-      const passwordMatches = await user.comparePassword(password);
-
-      if (!passwordMatches && password === account.password) {
-        user.username = account.username;
-        user.name = account.name;
-        user.email = normalizedEmail;
-        user.password = account.password;
-        user.role = account.role;
-        await user.save();
-        user = await User.findById(user._id);
-      }
-    }
+    const user = await User.findOne({ email: normalizedEmail }) || await User.findOne({ username: normalizedEmail });
 
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ error: 'Invalid credentials' });

@@ -1,5 +1,9 @@
 # AI Prompts and Validation Log
 
+## email and password
+## email = hr@example.com
+## password = hr1234
+
 ## Prompt 1 – Architecture & Planning
 **Prompt**: "Design a production-ready seat allocation and project mapping system for Ethara with approximately 5,000 employees. The system needs to track employee seating across 6 floors with 10 zones each, manage project assignments for 11 projects (Indigo, Indreed, Mydreed, etc.), and provide real-time dashboard analytics. Requirements: React frontend with Tailwind CSS, Node.js/Express backend, MongoDB database, JWT authentication, and an AI-powered natural language query assistant. Please outline the architecture, database schema, API endpoints, and component structure."
 
